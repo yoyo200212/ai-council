@@ -919,10 +919,11 @@
 
   // ── Gemini API Call ──
   async function callGemini(systemPrompt, userMessage, apiKey) {
-    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    // gemini-2.0-flash: 免費、穩定，v1beta 支援 system_instruction
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
     const body = {
-      contents: [{ role: 'user', parts: [{ text: userMessage }] }],
       system_instruction: { parts: [{ text: systemPrompt }] },
+      contents: [{ role: 'user', parts: [{ text: userMessage }] }],
       generationConfig: { temperature: 0.85, maxOutputTokens: 2048 }
     };
 
