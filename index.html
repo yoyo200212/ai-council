@@ -1,0 +1,1178 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0a0a14">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="AI決策集團">
+<title>三合一 AI 專家決策集團</title>
+<link rel="manifest" href="#" id="manifest-link">
+<style>
+  :root {
+    --bg-deep: #05050f;
+    --bg-card: #0d0d1f;
+    --bg-card2: #111128;
+    --neon-blue: #00c8ff;
+    --neon-purple: #b44fff;
+    --neon-green: #00ff9d;
+    --neon-gold: #ffd700;
+    --neon-red: #ff4466;
+    --neon-orange: #ff8c00;
+    --text-primary: #e8e8f8;
+    --text-secondary: #8888aa;
+    --border-glow: rgba(0, 200, 255, 0.25);
+    --font-mono: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    height: 100%;
+    background: var(--bg-deep);
+    color: var(--text-primary);
+    font-family: -apple-system, 'PingFang TC', 'Noto Sans TC', sans-serif;
+    overflow-x: hidden;
+  }
+
+  /* ── Header ── */
+  .header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(5,5,15,0.92);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border-glow);
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .header-title {
+    font-size: 15px;
+    font-weight: 700;
+    background: linear-gradient(90deg, var(--neon-blue), var(--neon-purple));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: 0.5px;
+  }
+
+  .gear-btn {
+    background: none;
+    border: 1px solid var(--border-glow);
+    border-radius: 8px;
+    color: var(--neon-blue);
+    font-size: 18px;
+    width: 36px; height: 36px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .gear-btn:hover, .gear-btn:active { border-color: var(--neon-blue); box-shadow: 0 0 12px rgba(0,200,255,0.4); }
+
+  /* ── Tabs ── */
+  .tabs {
+    display: flex;
+    background: var(--bg-card);
+    border-bottom: 1px solid var(--border-glow);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+
+  .tab-btn {
+    flex: 1;
+    min-width: 90px;
+    padding: 10px 6px;
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+  }
+  .tab-btn.active {
+    color: var(--neon-blue);
+    border-bottom-color: var(--neon-blue);
+    text-shadow: 0 0 8px var(--neon-blue);
+  }
+
+  /* ── Panels ── */
+  .panel { display: none; flex-direction: column; height: calc(100dvh - 102px); }
+  .panel.active { display: flex; }
+
+  /* ── Chat Area ── */
+  .chat-area {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+  }
+  .chat-area::-webkit-scrollbar { width: 4px; }
+  .chat-area::-webkit-scrollbar-thumb { background: var(--border-glow); border-radius: 2px; }
+
+  /* ── Bubbles ── */
+  .bubble-group { margin-bottom: 16px; }
+
+  .bubble-label {
+    font-size: 10px;
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .bubble {
+    max-width: 88%;
+    padding: 10px 14px;
+    border-radius: 16px;
+    font-size: 14px;
+    line-height: 1.6;
+    word-break: break-word;
+    white-space: pre-wrap;
+    position: relative;
+    animation: fadeUp 0.3s ease;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .bubble.user {
+    background: linear-gradient(135deg, #1a1a3e, #2a1a4e);
+    border: 1px solid rgba(180, 79, 255, 0.4);
+    margin-left: auto;
+    border-bottom-right-radius: 4px;
+    color: #ddd8ff;
+  }
+
+  .bubble.buffett {
+    background: linear-gradient(135deg, #0d1a0d, #1a2d0a);
+    border: 1px solid rgba(0, 255, 157, 0.35);
+    border-bottom-left-radius: 4px;
+    color: #c8ffd4;
+  }
+
+  .bubble.kline {
+    background: linear-gradient(135deg, #0d0f25, #151a38);
+    border: 1px solid rgba(0, 200, 255, 0.35);
+    border-bottom-left-radius: 4px;
+    color: #c8f0ff;
+  }
+
+  .bubble.blackswan {
+    background: linear-gradient(135deg, #200a0a, #3a0d0d);
+    border: 1px solid rgba(255, 68, 102, 0.4);
+    border-bottom-left-radius: 4px;
+    color: #ffc8d0;
+  }
+
+  .bubble.summary {
+    background: linear-gradient(135deg, #1a1200, #2d2000);
+    border: 1px solid rgba(255, 215, 0, 0.45);
+    border-bottom-left-radius: 4px;
+    color: #fff0a0;
+    max-width: 96%;
+  }
+
+  .bubble.system {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    color: var(--text-secondary);
+    font-size: 12px;
+    max-width: 100%;
+    text-align: center;
+    margin: 8px auto;
+  }
+
+  .typing-cursor::after {
+    content: '▋';
+    animation: blink 0.7s infinite;
+    color: var(--neon-blue);
+  }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+  /* ── Stock Input Zone ── */
+  .input-zone {
+    background: var(--bg-card);
+    border-top: 1px solid var(--border-glow);
+    padding: 10px 12px;
+    padding-bottom: calc(10px + env(safe-area-inset-bottom));
+  }
+
+  /* ── Quick Filter (Stock Panel) ── */
+  .quick-filter {
+    margin-bottom: 8px;
+  }
+
+  .quick-filter-label {
+    font-size: 10px;
+    color: var(--text-secondary);
+    margin-bottom: 5px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .filter-chips {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+  .filter-chips::-webkit-scrollbar { display: none; }
+
+  .chip {
+    flex-shrink: 0;
+    padding: 5px 10px;
+    border-radius: 20px;
+    border: 1px solid var(--border-glow);
+    background: rgba(0,200,255,0.06);
+    color: var(--text-secondary);
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.18s;
+    white-space: nowrap;
+  }
+  .chip.selected {
+    border-color: var(--neon-blue);
+    background: rgba(0,200,255,0.18);
+    color: var(--neon-blue);
+    box-shadow: 0 0 8px rgba(0,200,255,0.3);
+  }
+  .chip:active { transform: scale(0.96); }
+
+  /* ── Input Row ── */
+  .input-row {
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+  }
+
+  .msg-input {
+    flex: 1;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border-glow);
+    border-radius: 12px;
+    color: var(--text-primary);
+    font-size: 14px;
+    padding: 10px 12px;
+    resize: none;
+    max-height: 100px;
+    outline: none;
+    transition: border-color 0.2s;
+    -webkit-appearance: none;
+  }
+  .msg-input:focus { border-color: var(--neon-blue); box-shadow: 0 0 10px rgba(0,200,255,0.2); }
+  .msg-input::placeholder { color: var(--text-secondary); }
+
+  .send-btn {
+    width: 42px; height: 42px;
+    border-radius: 12px;
+    border: none;
+    background: linear-gradient(135deg, var(--neon-blue), var(--neon-purple));
+    color: #fff;
+    font-size: 18px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.2s;
+    box-shadow: 0 0 14px rgba(0,200,255,0.4);
+  }
+  .send-btn:active { transform: scale(0.93); }
+  .send-btn:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
+
+  /* ── Settings Modal ── */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 999;
+    background: rgba(0,0,0,0.75);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    align-items: flex-end;
+    justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+
+  .modal-sheet {
+    background: var(--bg-card2);
+    border: 1px solid var(--border-glow);
+    border-radius: 20px 20px 0 0;
+    padding: 20px 20px calc(20px + env(safe-area-inset-bottom));
+    width: 100%;
+    max-width: 540px;
+    animation: slideUp 0.25s ease;
+  }
+  @keyframes slideUp {
+    from { transform: translateY(100%); }
+    to   { transform: translateY(0); }
+  }
+
+  .modal-handle {
+    width: 40px; height: 4px;
+    background: var(--border-glow);
+    border-radius: 2px;
+    margin: 0 auto 16px;
+  }
+
+  .modal-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--neon-blue);
+    margin-bottom: 16px;
+    text-align: center;
+  }
+
+  .setting-group { margin-bottom: 16px; }
+
+  .setting-label {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .setting-input {
+    width: 100%;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border-glow);
+    border-radius: 10px;
+    color: var(--text-primary);
+    font-size: 13px;
+    padding: 10px 12px;
+    outline: none;
+    transition: border-color 0.2s;
+    -webkit-appearance: none;
+    font-family: var(--font-mono);
+  }
+  .setting-input:focus { border-color: var(--neon-blue); }
+
+  .save-btn {
+    width: 100%;
+    padding: 13px;
+    border-radius: 12px;
+    border: none;
+    background: linear-gradient(135deg, var(--neon-blue), var(--neon-purple));
+    color: #fff;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 0 20px rgba(0,200,255,0.35);
+    margin-top: 4px;
+  }
+  .save-btn:active { transform: scale(0.97); }
+
+  .api-status {
+    font-size: 11px;
+    text-align: center;
+    margin-top: 10px;
+    padding: 6px 10px;
+    border-radius: 6px;
+  }
+  .api-status.ok { color: var(--neon-green); background: rgba(0,255,157,0.08); }
+  .api-status.none { color: var(--neon-orange); background: rgba(255,140,0,0.08); }
+
+  /* ── Generic panel content ── */
+  .panel-scroll {
+    flex: 1;
+    overflow-y: auto;
+    padding: 14px;
+  }
+
+  .info-card {
+    background: var(--bg-card2);
+    border: 1px solid var(--border-glow);
+    border-radius: 14px;
+    padding: 14px;
+    margin-bottom: 12px;
+  }
+
+  .info-card-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--neon-blue);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .info-card p {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.65;
+  }
+
+  .persona-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  .persona-card {
+    background: var(--bg-card2);
+    border-radius: 12px;
+    padding: 12px;
+    border: 1px solid var(--border-glow);
+    text-align: center;
+  }
+
+  .persona-emoji { font-size: 26px; margin-bottom: 6px; }
+  .persona-name { font-size: 12px; font-weight: 700; margin-bottom: 3px; }
+  .persona-role { font-size: 10px; color: var(--text-secondary); }
+
+  /* ── Spinner ── */
+  .spinner {
+    display: inline-block;
+    width: 16px; height: 16px;
+    border: 2px solid rgba(0,200,255,0.2);
+    border-top-color: var(--neon-blue);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    vertical-align: middle;
+    margin-right: 6px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .loading-bubble {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 14px;
+    background: var(--bg-card2);
+    border: 1px solid var(--border-glow);
+    border-radius: 14px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    max-width: 70%;
+  }
+
+  /* ── Neon divider ── */
+  .neon-divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--neon-blue), transparent);
+    margin: 10px 0;
+    opacity: 0.4;
+  }
+
+  /* ── Scrollbar for desktop ── */
+  @media (min-width: 540px) {
+    .panel { max-width: 540px; margin: 0 auto; }
+    .tabs { max-width: 540px; margin: 0 auto; }
+    .header { max-width: 100%; }
+  }
+
+  /* Stock screener result badge */
+  .screener-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 700;
+    background: rgba(0,200,255,0.12);
+    border: 1px solid rgba(0,200,255,0.3);
+    color: var(--neon-blue);
+    margin: 2px;
+  }
+
+</style>
+</head>
+<body>
+
+<!-- ══ Header ══ -->
+<div class="header">
+  <div class="header-title">⚡ 三合一 AI 專家決策集團</div>
+  <button class="gear-btn" onclick="openSettings()" aria-label="設定">⚙️</button>
+</div>
+
+<!-- ══ Tabs ══ -->
+<div class="tabs">
+  <button class="tab-btn active" data-tab="home" onclick="switchTab('home', this)">🏠 首頁</button>
+  <button class="tab-btn" data-tab="stock" onclick="switchTab('stock', this)">📈 股票投資</button>
+  <button class="tab-btn" data-tab="career" onclick="switchTab('career', this)">💼 職涯諮詢</button>
+  <button class="tab-btn" data-tab="life" onclick="switchTab('life', this)">🧠 人生決策</button>
+</div>
+
+<!-- ══════════════════ HOME PANEL ══════════════════ -->
+<div class="panel active" id="panel-home">
+  <div class="panel-scroll">
+
+    <div style="text-align:center; padding: 20px 0 16px;">
+      <div style="font-size:42px; margin-bottom:8px;">🤖</div>
+      <div style="font-size:18px; font-weight:800; background:linear-gradient(90deg,var(--neon-blue),var(--neon-purple)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;">三合一 AI 專家決策集團</div>
+      <div style="font-size:12px; color:var(--text-secondary); margin-top:6px;">三位 AI 頂尖顧問，激辯出最佳答案</div>
+    </div>
+
+    <div class="persona-grid">
+      <div class="persona-card" style="border-color:rgba(0,255,157,0.3)">
+        <div class="persona-emoji">🎩</div>
+        <div class="persona-name" style="color:var(--neon-green)">巴菲特</div>
+        <div class="persona-role">基本面長線派</div>
+      </div>
+      <div class="persona-card" style="border-color:rgba(0,200,255,0.3)">
+        <div class="persona-emoji">📊</div>
+        <div class="persona-name" style="color:var(--neon-blue)">K線獵人</div>
+        <div class="persona-role">技術面短線派</div>
+      </div>
+      <div class="persona-card" style="border-color:rgba(255,68,102,0.3)">
+        <div class="persona-emoji">🦢</div>
+        <div class="persona-name" style="color:var(--neon-red)">黑天鵝預警員</div>
+        <div class="persona-role">風控極端情境</div>
+      </div>
+      <div class="persona-card" style="border-color:rgba(255,215,0,0.3)">
+        <div class="persona-emoji">👑</div>
+        <div class="persona-name" style="color:var(--neon-gold)">財務總結團長</div>
+        <div class="persona-role">綜合決策裁決</div>
+      </div>
+    </div>
+
+    <div class="info-card">
+      <div class="info-card-title">🚀 如何使用</div>
+      <p>① 點右上角 ⚙️ 輸入 Google Gemini API Key（免費申請）<br>② 選擇分析類型：股票 / 職涯 / 人生<br>③ 輸入問題，三位 AI 專家立即激辯<br>④ 無 Key 時自動啟動智能模擬模式</p>
+    </div>
+
+    <div class="info-card">
+      <div class="info-card-title">✨ 股票面板獨家功能</div>
+      <p>• 📊 技術指標快捷篩選（KD &lt; 20 超跌 / 均線黃金交叉）<br>• 自動掃描台股核心標的<br>• AI 三方激辯分析篩選結果<br>• 完整風控報告一鍵生成</p>
+    </div>
+
+    <div class="info-card" style="border-color:rgba(255,215,0,0.25)">
+      <div class="info-card-title" style="color:var(--neon-gold)">💡 PWA 加入主畫面</div>
+      <p>在瀏覽器點選「分享 → 加入主畫面」，即可像 App 一樣使用，離線也能存取。</p>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════════ STOCK PANEL ══════════════════ -->
+<div class="panel" id="panel-stock">
+
+  <div class="chat-area" id="chat-stock">
+    <div class="bubble-group">
+      <div class="bubble system">📈 股票投資團隊 — 已就緒</div>
+    </div>
+    <div class="bubble-group">
+      <div class="bubble-label">👑 財務總結團長</div>
+      <div class="bubble summary">歡迎進入股票投資分析室！\n\n請使用上方快捷篩選選擇分析模式，或直接輸入任何股票問題。三位 AI 專家將為您激辯出最佳投資策略。\n\n💡 提示：選擇「KD &lt; 20」或「均線黃金交叉」可自動掃描台股標的後進行 AI 分析。</div>
+    </div>
+  </div>
+
+  <div class="input-zone">
+    <!-- Quick Filter Chips -->
+    <div class="quick-filter">
+      <div class="quick-filter-label">📊 技術指標快捷篩選</div>
+      <div class="filter-chips">
+        <div class="chip selected" id="chip-custom" onclick="selectChip('custom')">🔍 自訂個股分析</div>
+        <div class="chip" id="chip-kd" onclick="selectChip('kd')">📉 KD &lt; 20 超跌</div>
+        <div class="chip" id="chip-golden" onclick="selectChip('golden')">✨ 均線黃金交叉</div>
+      </div>
+    </div>
+    <div class="input-row">
+      <textarea class="msg-input" id="input-stock" rows="1"
+        placeholder="輸入股票代號或問題（如：2330 值得買嗎？）"
+        oninput="autoResize(this)"
+        onkeydown="handleKey(event,'stock')"></textarea>
+      <button class="send-btn" id="send-stock" onclick="sendMessage('stock')">➤</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ CAREER PANEL ══════════════════ -->
+<div class="panel" id="panel-career">
+  <div class="chat-area" id="chat-career">
+    <div class="bubble-group">
+      <div class="bubble system">💼 職涯諮詢團隊 — 已就緒</div>
+    </div>
+    <div class="bubble-group">
+      <div class="bubble-label">👑 決策總結團長</div>
+      <div class="bubble summary">歡迎使用職涯諮詢服務！\n\n無論是換工作、升職規劃、跳槽外商、還是創業評估，三位 AI 顧問將從不同角度為您深度分析。\n\n請輸入您的職涯困境或問題 👇</div>
+    </div>
+  </div>
+  <div class="input-zone">
+    <div class="input-row">
+      <textarea class="msg-input" id="input-career" rows="1"
+        placeholder="如：我是 3 年工程師，要不要換去新創？"
+        oninput="autoResize(this)"
+        onkeydown="handleKey(event,'career')"></textarea>
+      <button class="send-btn" id="send-career" onclick="sendMessage('career')">➤</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ LIFE PANEL ══════════════════ -->
+<div class="panel" id="panel-life">
+  <div class="chat-area" id="chat-life">
+    <div class="bubble-group">
+      <div class="bubble system">🧠 人生決策團隊 — 已就緒</div>
+    </div>
+    <div class="bubble-group">
+      <div class="bubble-label">👑 決策總結團長</div>
+      <div class="bubble summary">歡迎使用人生決策分析室！\n\n婚姻、移民、買房、教育規劃... 人生重大決策讓三位頂尖顧問幫您釐清思路。\n\n不要猶豫，把您的困惑告訴我們 👇</div>
+    </div>
+  </div>
+  <div class="input-zone">
+    <div class="input-row">
+      <textarea class="msg-input" id="input-life" rows="1"
+        placeholder="如：我要不要移民去日本？"
+        oninput="autoResize(this)"
+        onkeydown="handleKey(event,'life')"></textarea>
+      <button class="send-btn" id="send-life" onclick="sendMessage('life')">➤</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Settings Modal ══ -->
+<div class="modal-overlay" id="settings-modal" onclick="handleModalClick(event)">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">⚙️ API 設定</div>
+
+    <div class="setting-group">
+      <div class="setting-label">🔑 Google Gemini API Key</div>
+      <input type="password" class="setting-input" id="gemini-key-input"
+        placeholder="AIzaSy...（免費申請 → aistudio.google.com）"
+        autocomplete="off" autocorrect="off" spellcheck="false">
+    </div>
+
+    <div class="setting-group">
+      <div class="setting-label" style="font-size:11px; color:rgba(136,136,170,0.7)">
+        ℹ️ 免費申請：<span style="color:var(--neon-blue)">aistudio.google.com</span> → Get API Key<br>
+        🔒 Key 僅儲存於本機 localStorage，不上傳任何伺服器
+      </div>
+    </div>
+
+    <div id="api-status-display"></div>
+
+    <button class="save-btn" onclick="saveSettings()">💾 儲存設定</button>
+    <button class="save-btn" style="background:rgba(255,255,255,0.07); box-shadow:none; margin-top:8px; color:var(--text-secondary);" onclick="closeSettings()">取消</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  // ── State ──
+  let activeChip = 'custom';
+  let currentPanel = 'home';
+
+  // ── PWA Manifest ──
+  try {
+    const manifest = {
+      name: '三合一 AI 專家決策集團',
+      short_name: 'AI決策集團',
+      start_url: '.',
+      display: 'standalone',
+      background_color: '#05050f',
+      theme_color: '#0a0a14',
+      icons: [{ src: 'https://placehold.co/192x192/0a0a14/00c8ff?text=AI', sizes: '192x192', type: 'image/png' }]
+    };
+    const blob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.getElementById('manifest-link');
+    if (link) link.href = url;
+  } catch (e) { /* ignore */ }
+
+  // ── Taiwan 50 Mock Data ──
+  const TW50_MOCK = [
+    { code: '2330', name: 'TSMC', kd: 18, ma5: 890, ma20: 875, maGolden: true,  kdOversold: true  },
+    { code: '2317', name: '鴻海',  kd: 15, ma5: 182, ma20: 178, maGolden: true,  kdOversold: true  },
+    { code: '2454', name: '聯發科', kd: 22, ma5: 1050, ma20: 1020, maGolden: true,  kdOversold: false },
+    { code: '2382', name: '廣達',  kd: 12, ma5: 310, ma20: 298, maGolden: true,  kdOversold: true  },
+    { code: '2308', name: '台達電', kd: 19, ma5: 430, ma20: 418, maGolden: true,  kdOversold: true  },
+    { code: '3711', name: '日月光', kd: 25, ma5: 165, ma20: 162, maGolden: false, kdOversold: false },
+    { code: '2303', name: '聯電',  kd: 17, ma5: 58,  ma20: 55,  maGolden: true,  kdOversold: true  },
+    { code: '2412', name: '中華電', kd: 45, ma5: 132, ma20: 130, maGolden: false, kdOversold: false },
+    { code: '1301', name: '台塑',  kd: 16, ma5: 88,  ma20: 84,  maGolden: true,  kdOversold: true  },
+    { code: '2881', name: '富邦金', kd: 31, ma5: 96,  ma20: 93,  maGolden: false, kdOversold: false },
+    { code: '2886', name: '兆豐金', kd: 14, ma5: 45,  ma20: 43,  maGolden: true,  kdOversold: true  },
+    { code: '2891', name: '中信金', kd: 20, ma5: 38,  ma20: 37,  maGolden: true,  kdOversold: true  },
+    { code: '2609', name: '陽明',  kd: 13, ma5: 82,  ma20: 78,  maGolden: true,  kdOversold: true  },
+    { code: '2615', name: '萬海',  kd: 11, ma5: 98,  ma20: 92,  maGolden: true,  kdOversold: true  },
+    { code: '6505', name: '台塑化', kd: 23, ma5: 75,  ma20: 73,  maGolden: false, kdOversold: false },
+    { code: '2002', name: '中鋼',  kd: 16, ma5: 31,  ma20: 29,  maGolden: true,  kdOversold: true  },
+    { code: '3008', name: '大立光', kd: 29, ma5: 2200, ma20: 2150, maGolden: false, kdOversold: false },
+    { code: '2379', name: '瑞昱',  kd: 18, ma5: 580, ma20: 565, maGolden: true,  kdOversold: true  },
+    { code: '4938', name: '和碩',  kd: 10, ma5: 78,  ma20: 72,  maGolden: true,  kdOversold: true  },
+    { code: '2395', name: '研華',  kd: 21, ma5: 390, ma20: 382, maGolden: true,  kdOversold: false }
+  ];
+
+  // ── Helpers ──
+  function getApiKey() {
+    try { return localStorage.getItem('gemini_api_key') || ''; } catch (e) { return ''; }
+  }
+
+  function setApiKey(key) {
+    try { localStorage.setItem('gemini_api_key', key); } catch (e) { /* ignore */ }
+  }
+
+  function scrollChat(panelId) {
+    const el = document.getElementById('chat-' + panelId);
+    if (el) setTimeout(() => { el.scrollTop = el.scrollHeight; }, 50);
+  }
+
+  function addBubble(panelId, role, text, extraClass) {
+    const chat = document.getElementById('chat-' + panelId);
+    if (!chat) return null;
+
+    const group = document.createElement('div');
+    group.className = 'bubble-group';
+
+    const personas = {
+      user:     { label: '👤 您', cls: 'user' },
+      buffett:  { label: '🎩 巴菲特（基本面）', cls: 'buffett' },
+      kline:    { label: '📊 K線獵人（技術面）', cls: 'kline' },
+      blackswan:{ label: '🦢 黑天鵝預警員（風控）', cls: 'blackswan' },
+      summary:  { label: '👑 財務總結團長', cls: 'summary' },
+      system:   { label: '', cls: 'system' }
+    };
+
+    const p = personas[role] || { label: role, cls: 'kline' };
+
+    if (p.label && role !== 'user' && role !== 'system') {
+      const lbl = document.createElement('div');
+      lbl.className = 'bubble-label';
+      lbl.textContent = p.label;
+      group.appendChild(lbl);
+    }
+
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble ' + p.cls + (extraClass ? ' ' + extraClass : '');
+    bubble.textContent = text;
+    group.appendChild(bubble);
+
+    chat.appendChild(group);
+    scrollChat(panelId);
+    return bubble;
+  }
+
+  function addLoading(panelId) {
+    const chat = document.getElementById('chat-' + panelId);
+    if (!chat) return null;
+    const div = document.createElement('div');
+    div.className = 'bubble-group';
+    div.id = 'loading-' + panelId;
+    div.innerHTML = '<div class="loading-bubble"><div class="spinner"></div><span>AI 專家激烈討論中...</span></div>';
+    chat.appendChild(div);
+    scrollChat(panelId);
+    return div;
+  }
+
+  function removeLoading(panelId) {
+    const el = document.getElementById('loading-' + panelId);
+    if (el) el.remove();
+  }
+
+  function typewriterBubble(panelId, role, fullText, delay, callback) {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        const bubble = addBubble(panelId, role, '');
+        if (!bubble) { resolve(); return; }
+        bubble.classList.add('typing-cursor');
+        let i = 0;
+        const speed = Math.max(12, Math.min(30, 800 / fullText.length));
+        const interval = setInterval(() => {
+          i++;
+          bubble.textContent = fullText.slice(0, i);
+          scrollChat(panelId);
+          if (i >= fullText.length) {
+            clearInterval(interval);
+            bubble.classList.remove('typing-cursor');
+            resolve();
+            if (callback) callback();
+          }
+        }, speed);
+      }, delay);
+    });
+  }
+
+  function setInputDisabled(panelId, disabled) {
+    const input = document.getElementById('input-' + panelId);
+    const btn   = document.getElementById('send-' + panelId);
+    if (input) input.disabled = disabled;
+    if (btn)   btn.disabled   = disabled;
+  }
+
+  // ── Tab Switching ──
+  window.switchTab = function(tabId, btn) {
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    const panel = document.getElementById('panel-' + tabId);
+    if (panel) panel.classList.add('active');
+    if (btn) btn.classList.add('active');
+    currentPanel = tabId;
+  };
+
+  // ── Chip Selection ──
+  window.selectChip = function(type) {
+    activeChip = type;
+    ['custom', 'kd', 'golden'].forEach(t => {
+      const el = document.getElementById('chip-' + t);
+      if (el) el.classList.toggle('selected', t === type);
+    });
+    const input = document.getElementById('input-stock');
+    if (input) {
+      if (type === 'custom') input.placeholder = '輸入股票代號或問題（如：2330 值得買嗎？）';
+      else if (type === 'kd') input.placeholder = '（可選填）附加問題，或直接送出開始掃描';
+      else input.placeholder = '（可選填）附加問題，或直接送出開始掃描';
+    }
+  };
+
+  // ── Auto Resize Textarea ──
+  window.autoResize = function(el) {
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 100) + 'px';
+  };
+
+  // ── Handle Enter Key ──
+  window.handleKey = function(e, panelId) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage(panelId);
+    }
+  };
+
+  // ── Settings ──
+  window.openSettings = function() {
+    const modal = document.getElementById('settings-modal');
+    if (!modal) return;
+    const keyInput = document.getElementById('gemini-key-input');
+    if (keyInput) keyInput.value = getApiKey();
+    updateApiStatusDisplay();
+    modal.classList.add('open');
+  };
+
+  window.closeSettings = function() {
+    const modal = document.getElementById('settings-modal');
+    if (modal) modal.classList.remove('open');
+  };
+
+  window.handleModalClick = function(e) {
+    if (e.target === document.getElementById('settings-modal')) closeSettings();
+  };
+
+  window.saveSettings = function() {
+    const keyInput = document.getElementById('gemini-key-input');
+    const key = keyInput ? keyInput.value.trim() : '';
+    setApiKey(key);
+    updateApiStatusDisplay();
+    setTimeout(closeSettings, 600);
+  };
+
+  function updateApiStatusDisplay() {
+    const el = document.getElementById('api-status-display');
+    if (!el) return;
+    const key = getApiKey();
+    if (key) {
+      el.innerHTML = '<div class="api-status ok">✅ Gemini API Key 已設定（真實 AI 模式）</div>';
+    } else {
+      el.innerHTML = '<div class="api-status none">⚠️ 未設定 Key — 將使用智能模擬模式</div>';
+    }
+  }
+
+  // ── Stock Screener ──
+  function screenStocks(type) {
+    if (type === 'kd') {
+      return TW50_MOCK.filter(s => s.kdOversold);
+    } else if (type === 'golden') {
+      return TW50_MOCK.filter(s => s.maGolden);
+    }
+    return [];
+  }
+
+  function buildStockListText(stocks, type) {
+    if (!stocks || stocks.length === 0) return '（無符合條件標的）';
+    return stocks.map(s => {
+      if (type === 'kd') return `${s.code} ${s.name}（KD=${s.kd}）`;
+      return `${s.code} ${s.name}（MA5=${s.ma5}, MA20=${s.ma20}，5日均>20日均）`;
+    }).join('、');
+  }
+
+  // ── System Prompts ──
+  function getSystemPrompt(panelId) {
+    const prompts = {
+      stock:  '你是一個股票投資分析團隊。用戶問問題時，你必須依序扮演：【巴菲特】從基本面和長期價值分析，然後是【K線獵人】從技術面和短線角度分析，接著是【黑天鵝預警員】從風控和極端風險角度警告，最後由【財務總結團長】做出綜合投資建議。每個角色必須用繁體中文，語氣鮮明有個性，互相針鋒相對。格式為：先寫角色標題，再寫該角色的分析內容。',
+      career: '你是一個職涯顧問團隊。請依序扮演：【積極派導師】（鼓勵大膽嘗試，強調機會和成長），【穩健派顧問】（分析風險，建議循序漸進），【現實魔鬼代言人】（挑戰假設，指出盲點），最後由【決策總結團長】整合三方觀點。使用繁體中文，語氣有個性。',
+      life:   '你是一個人生決策顧問團隊。請依序扮演：【理性分析師】（數據導向，分析成本效益），【情感顧問】（關注內心需求和家庭關係），【風險管理師】（評估最壞情境和備案），最後由【人生總結導師】整合建議。使用繁體中文，深度分析。'
+    };
+    return prompts[panelId] || prompts.stock;
+  }
+
+  // ── Gemini API Call ──
+  async function callGemini(systemPrompt, userMessage, apiKey) {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    const body = {
+      contents: [{ role: 'user', parts: [{ text: userMessage }] }],
+      systemInstruction: { parts: [{ text: systemPrompt }] },
+      generationConfig: { temperature: 0.85, maxOutputTokens: 2048 }
+    };
+
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error((err.error && err.error.message) || `HTTP ${res.status}`);
+    }
+
+    const data = await res.json();
+    const text = data.candidates &&
+                 data.candidates[0] &&
+                 data.candidates[0].content &&
+                 data.candidates[0].content.parts &&
+                 data.candidates[0].content.parts[0] &&
+                 data.candidates[0].content.parts[0].text;
+    if (!text) throw new Error('API 回傳空內容');
+    return text;
+  }
+
+  // ── Parse Gemini Response into Bubbles ──
+  function parseAndDisplayGeminiResponse(panelId, text) {
+    const sections = [
+      { key: '巴菲特', role: 'buffett' },
+      { key: 'K線獵人', role: 'kline' },
+      { key: '黑天鵝預警員', role: 'blackswan' },
+      { key: '財務總結團長', role: 'summary' },
+      { key: '積極派導師', role: 'buffett' },
+      { key: '穩健派顧問', role: 'kline' },
+      { key: '現實魔鬼代言人', role: 'blackswan' },
+      { key: '決策總結團長', role: 'summary' },
+      { key: '理性分析師', role: 'buffett' },
+      { key: '情感顧問', role: 'kline' },
+      { key: '風險管理師', role: 'blackswan' },
+      { key: '人生總結導師', role: 'summary' }
+    ];
+
+    // Try to split by section markers
+    let parsed = false;
+    let remaining = text;
+
+    const found = [];
+    sections.forEach(s => {
+      const regex = new RegExp('[【\\[]' + s.key + '[】\\]]', 'g');
+      const match = regex.exec(remaining);
+      if (match) {
+        found.push({ index: match.index, key: s.key, role: s.role });
+      }
+    });
+
+    if (found.length >= 2) {
+      found.sort((a, b) => a.index - b.index);
+      for (let i = 0; i < found.length; i++) {
+        const start = found[i].index;
+        const end = (i + 1 < found.length) ? found[i + 1].index : text.length;
+        const content = text.slice(start, end).trim();
+        if (content.length > 10) {
+          addBubble(panelId, found[i].role, content);
+          parsed = true;
+        }
+      }
+    }
+
+    if (!parsed) {
+      // Fallback: show as summary
+      addBubble(panelId, 'summary', text);
+    }
+  }
+
+  // ── Mock Responses ──
+  const MOCK_RESPONSES = {
+    stock: {
+      buffett: (q) => `🎩【巴菲特 — 基本面分析】\n\n關於「${q}」，我要先看這家公司的護城河夠不夠深！\n\n長期 ROE 是否持續超過 15%？自由現金流是否健康？管理層是否誠信且具競爭遠見？\n\n我不在乎短期股價波動，一個優秀的企業，10 年後的價值才是真正的關鍵。如果你今天買的是好公司，市場的恐慌只是給你更好的買入機會。\n\n評分：★★★★☆（需驗證基本面數據後確認）`,
+      kline:   (q) => `📊【K線獵人 — 技術面分析】\n\n「${q}」的圖表怎麼說？\n\n週線來看，MACD 黃金交叉剛剛確立！RSI 從超賣區 28 反彈至 42，動能正在重建。布林通道下軌強力支撐，短線目標看前高整數關卡。\n\n操作策略：突破 5 日均線確認後進場，設停損在近期低點下方 3%。量能若能同步放大，是最佳進場訊號！\n\n短線評分：🟢 買進觀察`,
+      blackswan: (q) => `🦢【黑天鵝預警員 — 風控警告】\n\n等等！大家都這麼樂觀，我必須潑冷水！\n\n針對「${q}」，我看到幾個潛在黑天鵝風險：\n① 地緣政治升溫（台海局勢/美中貿易戰）\n② 半導體庫存去化未完全確認\n③ 美聯儲升息風險尾部效應未消\n④ 外資近期持續淨賣超\n\n請勿超過總資金 5% 建倉！做好最壞情境模擬：-30% 你能接受嗎？\n\n風控評分：⚠️ 中高風險，謹慎操作`,
+      summary:  (q) => `👑【財務總結團長 — 綜合決策】\n\n三位專家激辯後，我的裁決如下：\n\n✅ 巴菲特支持長線持有（前提：基本面確認）\n✅ K線獵人給出技術面買進訊號\n⚠️ 黑天鵝預警員提醒控制部位\n\n【行動建議】\n• 分批建倉：第一批 50%，確認突破再加碼 30%\n• 停損設定：關鍵支撐下方 5% 嚴格執行\n• 目標報酬：3-6 個月看 15-25% 上漲空間\n\n最終評級：🟡 審慎買入，嚴守紀律\n\n⚠️ 本分析為 AI 模擬，不構成投資建議，請自行評估風險。`
+    },
+    screener: {
+      kd: (stocks) => ({
+        buffett:   `🎩【巴菲特】\n\n掃描結果顯示 ${stocks.length} 檔股票 KD 低於 20，陷入超賣區。\n\n從基本面角度，我優先關注：${stocks.slice(0,3).map(s=>s.name).join('、')}。這類公司在市場恐慌時正是撿便宜的機會！\n\n關鍵問題：股價下跌是暫時情緒還是基本面惡化？若是前者，這是絕佳買入時機。`,
+        kline:     `📊【K線獵人】\n\nKD < 20 是超賣訊號，但要等 K 線回頭才進場！\n\n本次掃描標的：${stocks.map(s=>s.code+' '+s.name).join('、')}\n\n操作重點：等 KD 由下往上死亡交叉反轉，搭配量縮後爆量，才是最佳入場點。不要接下跌的飛刀！`,
+        blackswan: `🦢【黑天鵝預警員】\n\nKD < 20 不代表不會繼續跌到 10 甚至 5！\n\n「超跌」可能是基本面崩壞的警訊。${stocks.slice(0,2).map(s=>s.name).join('和')} 需特別確認近期法說會內容，有沒有獲利下修的消息？\n\n建議：每檔部位不超過 3%，做好砍倉機制。`,
+        summary:   `👑【財務總結】\n\n本次 KD < 20 超跌篩選共找到 ${stocks.length} 檔標的，重點觀察：${stocks.slice(0,4).map(s=>s.code+' '+s.name+'(KD='+s.kd+')').join('、')}\n\n綜合建議：\n• 優先用 10% 資金小量試水\n• 等技術指標反轉確認後加碼\n• 基本面確認完好者優先介入\n\n⚠️ 此為 AI 模擬篩選結果，不構成投資建議。`
+      }),
+      golden: (stocks) => ({
+        buffett:   `🎩【巴菲特】\n\n均線黃金交叉顯示趨勢轉強，共 ${stocks.length} 檔，值得關注！\n\n均線是趨勢的照後鏡，黃金交叉代表短期動能超越長期均線，市場信心正在回升。\n\n我特別注意：${stocks.slice(0,3).map(s=>s.name).join('、')} — 確認基本面支撐後，這是好的進場機會。`,
+        kline:     `📊【K線獵人】\n\n黃金交叉！！這是技術面的重要買進訊號！\n\n確認黃金交叉標的：${stocks.map(s=>s.code+' '+s.name).join('、')}\n\n操作策略：5 日均突破 20 日均後，搭配成交量放大，確認突破後積極做多。目標看前波高點，停損設在 20 日均線下方。`,
+        blackswan: `🦢【黑天鵝預警員】\n\n黃金交叉在盤整格局中很容易「假突破」，別被騙了！\n\n確認是真突破的條件：\n① 成交量需為過去 5 日均量的 1.5 倍以上\n② 大盤指數同步上漲\n③ 外資期貨多單未明顯減少\n\n${stocks.slice(0,2).map(s=>s.name).join('和')} 需要再觀察 2-3 天確認。`,
+        summary:   `👑【財務總結】\n\n均線黃金交叉篩選共 ${stocks.length} 檔，優先關注：${stocks.slice(0,4).map(s=>s.code+' '+s.name).join('、')}\n\n行動建議：\n• 技術面確認後，首批建倉 40%\n• 量能放大後加碼至 70%\n• 停損設 20 日均線下方 3%\n• 目標報酬率：10-20%\n\n⚠️ 此為 AI 模擬篩選結果，不構成投資建議。`
+      })
+    },
+    career: {
+      role1:   (q) => `🌟【積極派導師】\n\n「${q}」— 這是一個大好機會！\n\n職涯最怕的不是嘗試失敗，而是從未嘗試的遺憾。\n\n從數據看：主動求職者的薪資成長平均比被動等待者快 30%。你的核心技能是可攜帶的資產，新環境只會讓它更發光！\n\n我的建議：行動！先投遞、先面試，選擇永遠比你想的多。最壞情況就是多一次寶貴經驗。`,
+      role2:   (q) => `🛡️【穩健派顧問】\n\n在做「${q}」的決定之前，我們需要冷靜分析：\n\n① 目前的財務緩衝夠嗎？（建議至少 6 個月生活費）\n② 新機會的風險點有沒有充分評估？\n③ 有沒有做過業界調查，確認是真實的市場需求？\n\n穩健不是膽小，是確保每一步都紮實。先建立退路，再大膽向前衝！`,
+      blackswan: (q) => `😈【現實魔鬼代言人】\n\n我要挑戰你的假設！\n\n關於「${q}」，你有沒有想過：\n• 你真正擅長的是什麼，和你「以為」自己擅長的一樣嗎？\n• 新環境的甜言蜜語，面試後 3 個月還成立嗎？\n• 你的動機是真正的成長渴望，還是逃避現有的不適？\n\n不是要打擊你，是要讓你的決定更堅不可摧！`,
+      summary: (q) => `👑【決策總結團長】\n\n針對「${q}」，三位顧問意見如下：\n\n積極派：行動！機會不等人\n穩健派：做好財務準備和評估\n魔鬼代言人：確認動機和假設\n\n【我的最終裁決】\n若財務緩衝超過 6 個月，且已確認新機會真實性，建議積極行動。若尚未準備好，先制定 90 天準備計畫。\n\n職涯決策沒有標準答案，重要的是：你的選擇能讓你 5 年後回頭無悔嗎？`
+    },
+    life: {
+      role1:   (q) => `📊【理性分析師】\n\n「${q}」的成本效益分析：\n\n關鍵量化指標：\n• 財務影響：需評估收入變化、生活成本差異\n• 機會成本：放棄現有資源的代價\n• 時間價值：決策越早，複利效果越明顯\n\n從理性角度，這個決定的期望值是正數嗎？請先做一份 5 年財務試算表。`,
+      role2:   (q) => `💙【情感顧問】\n\n「${q}」不只是數字問題，是關於你的幸福！\n\n我想問你幾個問題：\n• 這個決定能讓最重要的家人朋友受益嗎？\n• 5 年後的你，最不想聽到哪一句：「我去做了」還是「我沒去做」？\n• 你的內心深處，其實已經有答案了嗎？\n\n有時候，最好的決策是跟隨那個讓你深夜輾轉難眠的渴望。`,
+      blackswan: (q) => `⚠️【風險管理師】\n\n「${q}」的最壞情境分析：\n\n壓力測試：\n① 如果執行後事情完全不如預期，你能承受嗎？\n② 有沒有不可逆的後果需要特別注意？\n③ 有退路嗎？Plan B 是什麼？\n\n最好的決策不是零風險，而是風險可控。先確認底線，再去探索可能性的上限。`,
+      summary: (q) => `👑【人生總結導師】\n\n關於「${q}」，三位顧問的智慧精華：\n\n理性告訴你算清楚數字\n情感告訴你傾聽內心\n風控告訴你確認底線\n\n【人生智慧裁決】\n沒有完美的決定，只有當下最好的選擇。重要的是：你有足夠的資訊、足夠的準備、和足夠的勇氣去承擔選擇的結果。\n\n無論最後如何選擇，只要全力以赴，都值得驕傲。加油！💪`
+    }
+  };
+
+  // ── Run Mock Animation ──
+  async function runMockAnimation(panelId, question, mockData) {
+    const roles = Object.keys(mockData);
+    const delays = [0, 1200, 2400, 3600];
+    const roleKeys = ['buffett', 'kline', 'blackswan', 'summary'];
+
+    removeLoading(panelId);
+
+    for (let i = 0; i < roleKeys.length; i++) {
+      const role = roleKeys[i];
+      const text = mockData[role] || mockData[roles[i]];
+      if (!text) continue;
+      await typewriterBubble(panelId, role, text, delays[i]);
+    }
+
+    setInputDisabled(panelId, false);
+  }
+
+  // ── Main Send Message ──
+  window.sendMessage = async function(panelId) {
+    try {
+      const inputEl = document.getElementById('input-' + panelId);
+      if (!inputEl) return;
+
+      let userText = inputEl.value.trim();
+      let isScreener = false;
+      let screenerType = '';
+      let screenedStocks = [];
+
+      // Stock panel special handling
+      if (panelId === 'stock') {
+        if (activeChip === 'kd' || activeChip === 'golden') {
+          isScreener = true;
+          screenerType = activeChip;
+          screenedStocks = screenStocks(screenerType);
+          const condition = screenerType === 'kd' ? 'KD < 20 超跌股' : '均線黃金交叉股';
+          const stockList = buildStockListText(screenedStocks, screenerType);
+          if (!userText) userText = condition + ' 分析';
+
+          // Show screener action bubble
+          addBubble(panelId, 'system', `🔍 正在掃描台股標的... 篩選條件：${condition}`);
+          await new Promise(r => setTimeout(r, 800));
+          addBubble(panelId, 'system', `✅ 篩選完成！找到 ${screenedStocks.length} 檔符合標的：${screenedStocks.map(s => s.code + ' ' + s.name).join('、')}`);
+        }
+      }
+
+      if (!userText && !isScreener) return;
+
+      // Show user bubble
+      if (userText) addBubble(panelId, 'user', userText);
+      inputEl.value = '';
+      inputEl.style.height = 'auto';
+      setInputDisabled(panelId, true);
+
+      const apiKey = getApiKey();
+
+      if (!apiKey) {
+        // ── MOCK MODE ──
+        addLoading(panelId);
+        await new Promise(r => setTimeout(r, 1000));
+
+        let mockData;
+
+        if (isScreener) {
+          const screenerMock = MOCK_RESPONSES.screener[screenerType];
+          if (typeof screenerMock === 'function') {
+            mockData = screenerMock(screenedStocks);
+          }
+        } else if (panelId === 'stock') {
+          const q = userText;
+          mockData = {
+            buffett:   MOCK_RESPONSES.stock.buffett(q),
+            kline:     MOCK_RESPONSES.stock.kline(q),
+            blackswan: MOCK_RESPONSES.stock.blackswan(q),
+            summary:   MOCK_RESPONSES.stock.summary(q)
+          };
+        } else if (panelId === 'career') {
+          const q = userText;
+          mockData = {
+            buffett:   MOCK_RESPONSES.career.role1(q),
+            kline:     MOCK_RESPONSES.career.role2(q),
+            blackswan: MOCK_RESPONSES.career.blackswan(q),
+            summary:   MOCK_RESPONSES.career.summary(q)
+          };
+        } else {
+          const q = userText;
+          mockData = {
+            buffett:   MOCK_RESPONSES.life.role1(q),
+            kline:     MOCK_RESPONSES.life.role2(q),
+            blackswan: MOCK_RESPONSES.life.blackswan(q),
+            summary:   MOCK_RESPONSES.life.summary(q)
+          };
+        }
+
+        await runMockAnimation(panelId, userText, mockData);
+
+      } else {
+        // ── REAL GEMINI API MODE ──
+        addLoading(panelId);
+
+        let prompt = userText;
+        if (isScreener) {
+          const condition = screenerType === 'kd' ? 'KD指標低於20（超賣）' : '5日均線向上穿越20日均線（黃金交叉）';
+          const stockList = buildStockListText(screenedStocks, screenerType);
+          prompt = `我用技術指標篩選了台股標的，條件是「${condition}」，篩選結果共 ${screenedStocks.length} 檔：${stockList}。\n\n請對這些標的進行三方激辯分析，分別從基本面、技術面、風控角度分析，並給出投資建議。`;
+        }
+
+        const systemPrompt = getSystemPrompt(panelId);
+
+        const responseText = await callGemini(systemPrompt, prompt, apiKey);
+        removeLoading(panelId);
+        parseAndDisplayGeminiResponse(panelId, responseText);
+        setInputDisabled(panelId, false);
+      }
+
+    } catch (err) {
+      // ── SAFE ERROR HANDLING ──
+      try {
+        removeLoading(panelId || 'stock');
+        const errMsg = '⚠️ 發生錯誤：' + (err && err.message ? err.message : '未知錯誤') + '\n\n請檢查 API Key 是否正確，或稍後再試。若要使用模擬模式，請清除 API Key。';
+        addBubble(panelId || 'stock', 'system', errMsg);
+        setInputDisabled(panelId || 'stock', false);
+      } catch (e2) {
+        // Last resort
+        console.error('Display error failed:', e2);
+      }
+    }
+  };
+
+  // ── Init: Show API status hint ──
+  document.addEventListener('DOMContentLoaded', function () {
+    updateApiStatusDisplay();
+    if (!getApiKey()) {
+      setTimeout(() => {
+        addBubble('stock', 'system', '💡 提示：目前為智能模擬模式。前往設定（⚙️）輸入 Gemini API Key 可啟動真實 AI 分析。');
+      }, 500);
+    }
+  });
+
+})();
+</script>
+</body>
+</html>
