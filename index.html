@@ -498,13 +498,11 @@
 </head>
 <body>
 
-<!-- ══ Header ══ -->
 <div class="header">
   <div class="header-title">⚡ 三合一 AI 專家決策集團</div>
   <button class="gear-btn" onclick="openSettings()" aria-label="設定">⚙️</button>
 </div>
 
-<!-- ══ Tabs ══ -->
 <div class="tabs">
   <button class="tab-btn active" data-tab="home" onclick="switchTab('home', this)">🏠 首頁</button>
   <button class="tab-btn" data-tab="stock" onclick="switchTab('stock', this)">📈 股票投資</button>
@@ -512,7 +510,6 @@
   <button class="tab-btn" data-tab="life" onclick="switchTab('life', this)">🧠 人生決策</button>
 </div>
 
-<!-- ══════════════════ HOME PANEL ══════════════════ -->
 <div class="panel active" id="panel-home">
   <div class="panel-scroll">
 
@@ -563,7 +560,6 @@
   </div>
 </div>
 
-<!-- ══════════════════ STOCK PANEL ══════════════════ -->
 <div class="panel" id="panel-stock">
 
   <div class="chat-area" id="chat-stock">
@@ -577,7 +573,6 @@
   </div>
 
   <div class="input-zone">
-    <!-- Quick Filter Chips -->
     <div class="quick-filter">
       <div class="quick-filter-label">📊 技術指標快捷篩選</div>
       <div class="filter-chips">
@@ -596,7 +591,6 @@
   </div>
 </div>
 
-<!-- ══════════════════ CAREER PANEL ══════════════════ -->
 <div class="panel" id="panel-career">
   <div class="chat-area" id="chat-career">
     <div class="bubble-group">
@@ -618,7 +612,6 @@
   </div>
 </div>
 
-<!-- ══════════════════ LIFE PANEL ══════════════════ -->
 <div class="panel" id="panel-life">
   <div class="chat-area" id="chat-life">
     <div class="bubble-group">
@@ -640,7 +633,6 @@
   </div>
 </div>
 
-<!-- ══ Settings Modal ══ -->
 <div class="modal-overlay" id="settings-modal" onclick="handleModalClick(event)">
   <div class="modal-sheet">
     <div class="modal-handle"></div>
@@ -805,14 +797,104 @@
     });
   }
 
+  // ── Main Send Message ──
+  window.sendMessage = async function(panelId) {
+    try {
+      const inputEl = document.getElementById('input-' + panelId);
+      if (!inputEl) return;
+
+      let userText = inputEl.value.trim();
+      let isScreener = false;
+      let screenerType = '';
+      let screenedStocks = [];
+
+      if (panelId === 'stock') {
+        if (activeChip === 'kd' || activeChip === 'golden') {
+          isScreener = true;
+          screenerType = activeChip;
+          screenedStocks = screenStocks(screenerType);
+          const condition = screenerType === 'kd' ? 'KD < 20 超跌股' : '均線黃金交叉股';
+          if (!userText) userText = condition + ' 分析';
+
+          addBubble(panelId, 'system', `🔍 正在掃描台股標的... 篩選條件：${condition}`);
+          await new Promise(r => setTimeout(r, 800));
+          addBubble(panelId, 'system', `✅ 篩選完成！找到 ${screenedStocks.length} 檔符合標的：${screenedStocks.map(s => s.code + ' ' + s.name).join('、')}`);
+        }
+      }
+
+      if (!userText && !isScreener) return;
+
+      if (userText) addBubble(panelId, 'user', userText);
+      inputEl.value = '';
+      inputEl.style.height = 'auto';
+      setInputDisabled(panelId, true);
+
+      const apiKey = getApiKey();
+
+      if (!apiKey) {
+        addLoading(panelId);
+        await new Promise(r => setTimeout(r, 1000));
+        let mockData;
+        if (isScreener) {
+          const screenerMock = MOCK_RESPONSES.screener[screenerType];
+          if (typeof screenerMock === 'function') mockData = screenerMock(screenedStocks);
+        } else if (panelId === 'stock') {
+          const q = userText;
+          mockData = {
+            buffett: MOCK_RESPONSES.stock.buffett(q),
+            kline: MOCK_RESPONSES.stock.kline(q),
+            blackswan: MOCK_RESPONSES.stock.blackswan(q),
+            summary: MOCK_RESPONSES.stock.summary(q)
+          };
+        } else if (panelId === 'career') {
+          const q = userText;
+          mockData = {
+            buffett: MOCK_RESPONSES.career.role1(q),
+            kline: MOCK_RESPONSES.career.role2(q),
+            blackswan: MOCK_RESPONSES.career.blackswan(q),
+            summary: MOCK_RESPONSES.career.summary(q)
+          };
+        } else {
+          const q = userText;
+          mockData = {
+            buffett: MOCK_RESPONSES.life.role1(q),
+            kline: MOCK_RESPONSES.life.role2(q),
+            blackswan: MOCK_RESPONSES.life.blackswan(q),
+            summary: MOCK_RESPONSES.life.summary(q)
+          };
+        }
+        await runMockAnimation(panelId, userText, mockData);
+      } else {
+        addLoading(panelId);
+        let prompt = userText;
+        if (isScreener) {
+          const condition = screenerType === 'kd' ? 'KD指標低於20（超賣）' : '5日均線向上穿越20日均線（黃金交叉）';
+          const stockList = buildStockListText(screenedStocks, screenerType);
+          prompt = `我用技術指標篩選了台股標的，條件是「${condition}」，篩選結果共 ${screenedStocks.length} 檔：${stockList}。\n\n請對這些標的進行三方激辯分析，分別從基本面、技術面、風控角度分析，並給出投資建議。`;
+        }
+        const systemPrompt = getSystemPrompt(panelId);
+        const responseText = await callGemini(systemPrompt, prompt, apiKey);
+        removeLoading(panelId);
+        parseAndDisplayGeminiResponse(panelId, responseText);
+        setInputDisabled(panelId, false);
+      }
+    } catch (err) {
+      try {
+        removeLoading(panelId || 'stock');
+        const errMsg = '⚠️ 發生錯誤：' + (err && err.message ? err.message : '未知錯誤') + '\n\n請檢查 API Key 是否正確，或稍後再試。';
+        addBubble(panelId || 'stock', 'system', errMsg);
+        setInputDisabled(panelId || 'stock', false);
+      } catch (e2) { console.error(e2); }
+    }
+  };
+
   function setInputDisabled(panelId, disabled) {
     const input = document.getElementById('input-' + panelId);
-    const btn   = document.getElementById('send-' + panelId);
+    const btn = document.getElementById('send-' + panelId);
     if (input) input.disabled = disabled;
-    if (btn)   btn.disabled   = disabled;
+    if (btn) btn.disabled = disabled;
   }
 
-  // ── Tab Switching ──
   window.switchTab = function(tabId, btn) {
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -822,7 +904,6 @@
     currentPanel = tabId;
   };
 
-  // ── Chip Selection ──
   window.selectChip = function(type) {
     activeChip = type;
     ['custom', 'kd', 'golden'].forEach(t => {
@@ -832,18 +913,15 @@
     const input = document.getElementById('input-stock');
     if (input) {
       if (type === 'custom') input.placeholder = '輸入股票代號或問題（如：2330 值得買嗎？）';
-      else if (type === 'kd') input.placeholder = '（可選填）附加問題，或直接送出開始掃描';
       else input.placeholder = '（可選填）附加問題，或直接送出開始掃描';
     }
   };
 
-  // ── Auto Resize Textarea ──
   window.autoResize = function(el) {
     el.style.height = 'auto';
     el.style.height = Math.min(el.scrollHeight, 100) + 'px';
   };
 
-  // ── Handle Enter Key ──
   window.handleKey = function(e, panelId) {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -851,7 +929,6 @@
     }
   };
 
-  // ── Settings ──
   window.openSettings = function() {
     const modal = document.getElementById('settings-modal');
     if (!modal) return;
@@ -882,20 +959,13 @@
     const el = document.getElementById('api-status-display');
     if (!el) return;
     const key = getApiKey();
-    if (key) {
-      el.innerHTML = '<div class="api-status ok">✅ Gemini API Key 已設定（真實 AI 模式）</div>';
-    } else {
-      el.innerHTML = '<div class="api-status none">⚠️ 未設定 Key — 將使用智能模擬模式</div>';
-    }
+    if (key) el.innerHTML = '<div class="api-status ok">✅ Gemini API Key 已設定（真實 AI 模式）</div>';
+    else el.innerHTML = '<div class="api-status none">⚠️ 未設定 Key — 將使用智能模擬模式</div>';
   }
 
-  // ── Stock Screener ──
   function screenStocks(type) {
-    if (type === 'kd') {
-      return TW50_MOCK.filter(s => s.kdOversold);
-    } else if (type === 'golden') {
-      return TW50_MOCK.filter(s => s.maGolden);
-    }
+    if (type === 'kd') return TW50_MOCK.filter(s => s.kdOversold);
+    if (type === 'golden') return TW50_MOCK.filter(s => s.maGolden);
     return [];
   }
 
@@ -903,23 +973,22 @@
     if (!stocks || stocks.length === 0) return '（無符合條件標的）';
     return stocks.map(s => {
       if (type === 'kd') return `${s.code} ${s.name}（KD=${s.kd}）`;
-      return `${s.code} ${s.name}（MA5=${s.ma5}, MA20=${s.ma20}，5日均>20日均）`;
+      return `${s.code} ${s.name}（MA5=${s.ma5}, MA20=${s.ma20}）`;
     }).join('、');
   }
 
-  // ── System Prompts ──
   function getSystemPrompt(panelId) {
     const prompts = {
-      stock:  '你是一個股票投資分析團隊。用戶問問題時，你必須依序扮演：【巴菲特】從基本面和長期價值分析，然後是【K線獵人】從技術面和短線角度分析，接著是【黑天鵝預警員】從風控和極端風險角度警告，最後由【財務總結團長】做出綜合投資建議。每個角色必須用繁體中文，語氣鮮明有個性，互相針鋒相對。格式為：先寫角色標題，再寫該角色的分析內容。',
-      career: '你是一個職涯顧問團隊。請依序扮演：【積極派導師】（鼓勵大膽嘗試，強調機會和成長），【穩健派顧問】（分析風險，建議循序漸進），【現實魔鬼代言人】（挑戰假設，指出盲點），最後由【決策總結團長】整合三方觀點。使用繁體中文，語氣有個性。',
-      life:   '你是一個人生決策顧問團隊。請依序扮演：【理性分析師】（數據導向，分析成本效益），【情感顧問】（關注內心需求和家庭關係），【風險管理師】（評估最壞情境和備案），最後由【人生總結導師】整合建議。使用繁體中文，深度分析。'
+      stock: '你是一個股票投資分析團隊。用戶問問題時，你必須依序扮演：【巴菲特】從基本面和長期價值分析，然後是【K線獵人】從技術面和短線角度分析，接著是【黑天鵝預警員】從風控和極端風險角度警告，最後由【財務總結團長】做出綜合投資建議。每個角色必須用繁體中文，語氣鮮明有個性。格式為：先寫角色標題，再寫該角色的分析內容。',
+      career: '你是一個職涯顧問團隊。請依序扮演：【積極派導師】（鼓勵大膽嘗試），【穩健派顧問】（分析風險），【現實魔鬼代言人】（挑戰假設），最後由【決策總結團長】整合三方觀點。使用繁體中文。',
+      life: '你是一個人生決策顧問團隊。請依序扮演：【理性分析師】（數據導向），【情感顧問】（關注內心），【風險管理師】（評估最壞情境），最後由【人生總結導師】整合建議。使用繁體中文。'
     };
     return prompts[panelId] || prompts.stock;
   }
 
-  // ── Gemini API Call ──
+  // ── 精準修正：改為穩定的官方 v1 網址 ──
   async function callGemini(systemPrompt, userMessage, apiKey) {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
     const body = {
       contents: [{ role: 'user', parts: [{ text: userMessage }] }],
       systemInstruction: { parts: [{ text: systemPrompt }] },
@@ -938,240 +1007,86 @@
     }
 
     const data = await res.json();
-    const text = data.candidates &&
-                 data.candidates[0] &&
-                 data.candidates[0].content &&
-                 data.candidates[0].content.parts &&
-                 data.candidates[0].content.parts[0] &&
-                 data.candidates[0].content.parts[0].text;
+    const text = data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0] && data.candidates[0].content.parts[0].text;
     if (!text) throw new Error('API 回傳空內容');
     return text;
   }
 
-  // ── Parse Gemini Response into Bubbles ──
   function parseAndDisplayGeminiResponse(panelId, text) {
     const sections = [
-      { key: '巴菲特', role: 'buffett' },
-      { key: 'K線獵人', role: 'kline' },
-      { key: '黑天鵝預警員', role: 'blackswan' },
-      { key: '財務總結團長', role: 'summary' },
-      { key: '積極派導師', role: 'buffett' },
-      { key: '穩健派顧問', role: 'kline' },
-      { key: '現實魔鬼代言人', role: 'blackswan' },
-      { key: '決策總結團長', role: 'summary' },
-      { key: '理性分析師', role: 'buffett' },
-      { key: '情感顧問', role: 'kline' },
-      { key: '風險管理師', role: 'blackswan' },
-      { key: '人生總結導師', role: 'summary' }
+      { key: '巴菲特', role: 'buffett' }, { key: 'K線獵人', role: 'kline' }, { key: '黑天鵝預警員', role: 'blackswan' }, { key: '財務總結團長', role: 'summary' },
+      { key: '積極派導師', role: 'buffett' }, { key: '穩健派顧問', role: 'kline' }, { key: '現實魔鬼代言人', role: 'blackswan' }, { key: '決策總結團長', role: 'summary' },
+      { key: '理性分析師', role: 'buffett' }, { key: '情感顧問', role: 'kline' }, { key: '風險管理師', role: 'blackswan' }, { key: '人生總結導師', role: 'summary' }
     ];
-
-    // Try to split by section markers
     let parsed = false;
     let remaining = text;
-
     const found = [];
     sections.forEach(s => {
       const regex = new RegExp('[【\\[]' + s.key + '[】\\]]', 'g');
       const match = regex.exec(remaining);
-      if (match) {
-        found.push({ index: match.index, key: s.key, role: s.role });
-      }
+      if (match) found.push({ index: match.index, key: s.key, role: s.role });
     });
-
     if (found.length >= 2) {
       found.sort((a, b) => a.index - b.index);
       for (let i = 0; i < found.length; i++) {
         const start = found[i].index;
         const end = (i + 1 < found.length) ? found[i + 1].index : text.length;
         const content = text.slice(start, end).trim();
-        if (content.length > 10) {
-          addBubble(panelId, found[i].role, content);
-          parsed = true;
-        }
+        if (content.length > 10) { addBubble(panelId, found[i].role, content); parsed = true; }
       }
     }
-
-    if (!parsed) {
-      // Fallback: show as summary
-      addBubble(panelId, 'summary', text);
-    }
+    if (!parsed) addBubble(panelId, 'summary', text);
   }
 
-  // ── Mock Responses ──
   const MOCK_RESPONSES = {
     stock: {
-      buffett: (q) => `🎩【巴菲特 — 基本面分析】\n\n關於「${q}」，我要先看這家公司的護城河夠不夠深！\n\n長期 ROE 是否持續超過 15%？自由現金流是否健康？管理層是否誠信且具競爭遠見？\n\n我不在乎短期股價波動，一個優秀的企業，10 年後的價值才是真正的關鍵。如果你今天買的是好公司，市場的恐慌只是給你更好的買入機會。\n\n評分：★★★★☆（需驗證基本面數據後確認）`,
-      kline:   (q) => `📊【K線獵人 — 技術面分析】\n\n「${q}」的圖表怎麼說？\n\n週線來看，MACD 黃金交叉剛剛確立！RSI 從超賣區 28 反彈至 42，動能正在重建。布林通道下軌強力支撐，短線目標看前高整數關卡。\n\n操作策略：突破 5 日均線確認後進場，設停損在近期低點下方 3%。量能若能同步放大，是最佳進場訊號！\n\n短線評分：🟢 買進觀察`,
-      blackswan: (q) => `🦢【黑天鵝預警員 — 風控警告】\n\n等等！大家都這麼樂觀，我必須潑冷水！\n\n針對「${q}」，我看到幾個潛在黑天鵝風險：\n① 地緣政治升溫（台海局勢/美中貿易戰）\n② 半導體庫存去化未完全確認\n③ 美聯儲升息風險尾部效應未消\n④ 外資近期持續淨賣超\n\n請勿超過總資金 5% 建倉！做好最壞情境模擬：-30% 你能接受嗎？\n\n風控評分：⚠️ 中高風險，謹慎操作`,
-      summary:  (q) => `👑【財務總結團長 — 綜合決策】\n\n三位專家激辯後，我的裁決如下：\n\n✅ 巴菲特支持長線持有（前提：基本面確認）\n✅ K線獵人給出技術面買進訊號\n⚠️ 黑天鵝預警員提醒控制部位\n\n【行動建議】\n• 分批建倉：第一批 50%，確認突破再加碼 30%\n• 停損設定：關鍵支撐下方 5% 嚴格執行\n• 目標報酬：3-6 個月看 15-25% 上漲空間\n\n最終評級：🟡 審慎買入，嚴守紀律\n\n⚠️ 本分析為 AI 模擬，不構成投資建議，請自行評估風險。`
+      buffett: (q) => `🎩【巴菲特】\n\n關於「${q}」，基本面大於一切！護城河與 ROE 是我關注的焦點。`,
+      kline: (q) => `📊【K線獵人】\n\n「${q}」短線動能浮現，KD 反彈，突破 5 日線即可考慮順勢操作。`,
+      blackswan: (q) => `🦢【黑天鵝預警員】\n\n小心市場系統性風險，部位勿重倉，嚴設停損！`,
+      summary: (q) => `👑【財務總結團長】\n\n長線保護短線，控制好風控，分批布局最穩健。`
     },
     screener: {
       kd: (stocks) => ({
-        buffett:   `🎩【巴菲特】\n\n掃描結果顯示 ${stocks.length} 檔股票 KD 低於 20，陷入超賣區。\n\n從基本面角度，我優先關注：${stocks.slice(0,3).map(s=>s.name).join('、')}。這類公司在市場恐慌時正是撿便宜的機會！\n\n關鍵問題：股價下跌是暫時情緒還是基本面惡化？若是前者，這是絕佳買入時機。`,
-        kline:     `📊【K線獵人】\n\nKD < 20 是超賣訊號，但要等 K 線回頭才進場！\n\n本次掃描標的：${stocks.map(s=>s.code+' '+s.name).join('、')}\n\n操作重點：等 KD 由下往上死亡交叉反轉，搭配量縮後爆量，才是最佳入場點。不要接下跌的飛刀！`,
-        blackswan: `🦢【黑天鵝預警員】\n\nKD < 20 不代表不會繼續跌到 10 甚至 5！\n\n「超跌」可能是基本面崩壞的警訊。${stocks.slice(0,2).map(s=>s.name).join('和')} 需特別確認近期法說會內容，有沒有獲利下修的消息？\n\n建議：每檔部位不超過 3%，做好砍倉機制。`,
-        summary:   `👑【財務總結】\n\n本次 KD < 20 超跌篩選共找到 ${stocks.length} 檔標的，重點觀察：${stocks.slice(0,4).map(s=>s.code+' '+s.name+'(KD='+s.kd+')').join('、')}\n\n綜合建議：\n• 優先用 10% 資金小量試水\n• 等技術指標反轉確認後加碼\n• 基本面確認完好者優先介入\n\n⚠️ 此為 AI 模擬篩選結果，不構成投資建議。`
+        buffett: `🎩【巴菲特】\n\n超跌股出現了，這批標的中優質企業打折，是長線好買點。`,
+        kline: `📊【K線獵人】\n\nKD < 20 有超賣訊號，等黃金交叉反轉爆量再進場！`,
+        blackswan: `🦢【黑天鵝預警員】\n\n超跌必有因，小心不要接到下墜的飛刀。`,
+        summary: `👑【財務總結】\n\n共 ${stocks.length} 檔超跌標的，依據風控紀律分批建立小部位試水。`
       }),
       golden: (stocks) => ({
-        buffett:   `🎩【巴菲特】\n\n均線黃金交叉顯示趨勢轉強，共 ${stocks.length} 檔，值得關注！\n\n均線是趨勢的照後鏡，黃金交叉代表短期動能超越長期均線，市場信心正在回升。\n\n我特別注意：${stocks.slice(0,3).map(s=>s.name).join('、')} — 確認基本面支撐後，這是好的進場機會。`,
-        kline:     `📊【K線獵人】\n\n黃金交叉！！這是技術面的重要買進訊號！\n\n確認黃金交叉標的：${stocks.map(s=>s.code+' '+s.name).join('、')}\n\n操作策略：5 日均突破 20 日均後，搭配成交量放大，確認突破後積極做多。目標看前波高點，停損設在 20 日均線下方。`,
-        blackswan: `🦢【黑天鵝預警員】\n\n黃金交叉在盤整格局中很容易「假突破」，別被騙了！\n\n確認是真突破的條件：\n① 成交量需為過去 5 日均量的 1.5 倍以上\n② 大盤指數同步上漲\n③ 外資期貨多單未明顯減少\n\n${stocks.slice(0,2).map(s=>s.name).join('和')} 需要再觀察 2-3 天確認。`,
-        summary:   `👑【財務總結】\n\n均線黃金交叉篩選共 ${stocks.length} 檔，優先關注：${stocks.slice(0,4).map(s=>s.code+' '+s.name).join('、')}\n\n行動建議：\n• 技術面確認後，首批建倉 40%\n• 量能放大後加碼至 70%\n• 停損設 20 日均線下方 3%\n• 目標報酬率：10-20%\n\n⚠️ 此為 AI 模擬篩選結果，不構成投資建議。`
+        buffett: `🎩【巴菲特】\n\n均線趨勢轉強，反映出市場信心正在回溫。`,
+        kline: `📊【K線獵人】\n\n黃金交叉正點！短線跟進，設好防守區間。`,
+        blackswan: `🦢【黑天鵝預警員】\n\n注意盤整局部的假突破，量能不夠不要追。`,
+        summary: `👑【財務總結】\n\n多方動能成形，帶量突破即可跟進做多，嚴守 20 日線防守。`
       })
     },
     career: {
-      role1:   (q) => `🌟【積極派導師】\n\n「${q}」— 這是一個大好機會！\n\n職涯最怕的不是嘗試失敗，而是從未嘗試的遺憾。\n\n從數據看：主動求職者的薪資成長平均比被動等待者快 30%。你的核心技能是可攜帶的資產，新環境只會讓它更發光！\n\n我的建議：行動！先投遞、先面試，選擇永遠比你想的多。最壞情況就是多一次寶貴經驗。`,
-      role2:   (q) => `🛡️【穩健派顧問】\n\n在做「${q}」的決定之前，我們需要冷靜分析：\n\n① 目前的財務緩衝夠嗎？（建議至少 6 個月生活費）\n② 新機會的風險點有沒有充分評估？\n③ 有沒有做過業界調查，確認是真實的市場需求？\n\n穩健不是膽小，是確保每一步都紮實。先建立退路，再大膽向前衝！`,
-      blackswan: (q) => `😈【現實魔鬼代言人】\n\n我要挑戰你的假設！\n\n關於「${q}」，你有沒有想過：\n• 你真正擅長的是什麼，和你「以為」自己擅長的一樣嗎？\n• 新環境的甜言蜜語，面試後 3 個月還成立嗎？\n• 你的動機是真正的成長渴望，還是逃避現有的不適？\n\n不是要打擊你，是要讓你的決定更堅不可摧！`,
-      summary: (q) => `👑【決策總結團長】\n\n針對「${q}」，三位顧問意見如下：\n\n積極派：行動！機會不等人\n穩健派：做好財務準備和評估\n魔鬼代言人：確認動機和假設\n\n【我的最終裁決】\n若財務緩衝超過 6 個月，且已確認新機會真實性，建議積極行動。若尚未準備好，先制定 90 天準備計畫。\n\n職涯決策沒有標準答案，重要的是：你的選擇能讓你 5 年後回頭無悔嗎？`
+      role1: (q) => `🌟【積極派導師】\n\n不要害怕改變！大膽去面試爭取更高舞台！`,
+      role2: (q) => `🛡️【穩健派顧問】\n\n先衡量好 6 個月預備金，盤點自身籌碼後再轉職。`,
+      blackswan: (q) => `😈【現實魔鬼代言人】\n\n你是在追求成長，還是在逃避目前的倦怠？想清楚。`,
+      summary: (q) => `👑【決策總結團長】\n\n謀定而後動，在風險可控的情況下，給自己挑戰新世界的機會。`
     },
     life: {
-      role1:   (q) => `📊【理性分析師】\n\n「${q}」的成本效益分析：\n\n關鍵量化指標：\n• 財務影響：需評估收入變化、生活成本差異\n• 機會成本：放棄現有資源的代價\n• 時間價值：決策越早，複利效果越明顯\n\n從理性角度，這個決定的期望值是正數嗎？請先做一份 5 年財務試算表。`,
-      role2:   (q) => `💙【情感顧問】\n\n「${q}」不只是數字問題，是關於你的幸福！\n\n我想問你幾個問題：\n• 這個決定能讓最重要的家人朋友受益嗎？\n• 5 年後的你，最不想聽到哪一句：「我去做了」還是「我沒去做」？\n• 你的內心深處，其實已經有答案了嗎？\n\n有時候，最好的決策是跟隨那個讓你深夜輾轉難眠的渴望。`,
-      blackswan: (q) => `⚠️【風險管理師】\n\n「${q}」的最壞情境分析：\n\n壓力測試：\n① 如果執行後事情完全不如預期，你能承受嗎？\n② 有沒有不可逆的後果需要特別注意？\n③ 有退路嗎？Plan B 是什麼？\n\n最好的決策不是零風險，而是風險可控。先確認底線，再去探索可能性的上限。`,
-      summary: (q) => `👑【人生總結導師】\n\n關於「${q}」，三位顧問的智慧精華：\n\n理性告訴你算清楚數字\n情感告訴你傾聽內心\n風控告訴你確認底線\n\n【人生智慧裁決】\n沒有完美的決定，只有當下最好的選擇。重要的是：你有足夠的資訊、足夠的準備、和足夠的勇氣去承擔選擇的結果。\n\n無論最後如何選擇，只要全力以赴，都值得驕傲。加油！💪`
+      role1: (q) => `📊【理性分析師】\n\n先列出 5 年財務和時間成本，客觀評估投報率。`,
+      role2: (q) => `💙【情感顧問】\n\n傾聽你的內心，哪個決定能帶給你和家人真正的平靜與快樂？`,
+      blackswan: (q) => `⚠️【風險管理師】\n\n做好最壞情境的 Plan B 備案，底線踩穩就不用怕。`,
+      summary: (q) => `👑【人生總結導師】\n\n人生沒有白走的路，資訊蒐集充足後，勇敢承擔並前進。`
     }
   };
 
-  // ── Run Mock Animation ──
   async function runMockAnimation(panelId, question, mockData) {
-    const roles = Object.keys(mockData);
-    const delays = [0, 1200, 2400, 3600];
     const roleKeys = ['buffett', 'kline', 'blackswan', 'summary'];
-
     removeLoading(panelId);
-
     for (let i = 0; i < roleKeys.length; i++) {
       const role = roleKeys[i];
-      const text = mockData[role] || mockData[roles[i]];
-      if (!text) continue;
-      await typewriterBubble(panelId, role, text, delays[i]);
+      const text = mockData[role];
+      if (text) await typewriterBubble(panelId, role, text, i === 0 ? 0 : 1200);
     }
-
     setInputDisabled(panelId, false);
   }
 
-  // ── Main Send Message ──
-  window.sendMessage = async function(panelId) {
-    try {
-      const inputEl = document.getElementById('input-' + panelId);
-      if (!inputEl) return;
-
-      let userText = inputEl.value.trim();
-      let isScreener = false;
-      let screenerType = '';
-      let screenedStocks = [];
-
-      // Stock panel special handling
-      if (panelId === 'stock') {
-        if (activeChip === 'kd' || activeChip === 'golden') {
-          isScreener = true;
-          screenerType = activeChip;
-          screenedStocks = screenStocks(screenerType);
-          const condition = screenerType === 'kd' ? 'KD < 20 超跌股' : '均線黃金交叉股';
-          const stockList = buildStockListText(screenedStocks, screenerType);
-          if (!userText) userText = condition + ' 分析';
-
-          // Show screener action bubble
-          addBubble(panelId, 'system', `🔍 正在掃描台股標的... 篩選條件：${condition}`);
-          await new Promise(r => setTimeout(r, 800));
-          addBubble(panelId, 'system', `✅ 篩選完成！找到 ${screenedStocks.length} 檔符合標的：${screenedStocks.map(s => s.code + ' ' + s.name).join('、')}`);
-        }
-      }
-
-      if (!userText && !isScreener) return;
-
-      // Show user bubble
-      if (userText) addBubble(panelId, 'user', userText);
-      inputEl.value = '';
-      inputEl.style.height = 'auto';
-      setInputDisabled(panelId, true);
-
-      const apiKey = getApiKey();
-
-      if (!apiKey) {
-        // ── MOCK MODE ──
-        addLoading(panelId);
-        await new Promise(r => setTimeout(r, 1000));
-
-        let mockData;
-
-        if (isScreener) {
-          const screenerMock = MOCK_RESPONSES.screener[screenerType];
-          if (typeof screenerMock === 'function') {
-            mockData = screenerMock(screenedStocks);
-          }
-        } else if (panelId === 'stock') {
-          const q = userText;
-          mockData = {
-            buffett:   MOCK_RESPONSES.stock.buffett(q),
-            kline:     MOCK_RESPONSES.stock.kline(q),
-            blackswan: MOCK_RESPONSES.stock.blackswan(q),
-            summary:   MOCK_RESPONSES.stock.summary(q)
-          };
-        } else if (panelId === 'career') {
-          const q = userText;
-          mockData = {
-            buffett:   MOCK_RESPONSES.career.role1(q),
-            kline:     MOCK_RESPONSES.career.role2(q),
-            blackswan: MOCK_RESPONSES.career.blackswan(q),
-            summary:   MOCK_RESPONSES.career.summary(q)
-          };
-        } else {
-          const q = userText;
-          mockData = {
-            buffett:   MOCK_RESPONSES.life.role1(q),
-            kline:     MOCK_RESPONSES.life.role2(q),
-            blackswan: MOCK_RESPONSES.life.blackswan(q),
-            summary:   MOCK_RESPONSES.life.summary(q)
-          };
-        }
-
-        await runMockAnimation(panelId, userText, mockData);
-
-      } else {
-        // ── REAL GEMINI API MODE ──
-        addLoading(panelId);
-
-        let prompt = userText;
-        if (isScreener) {
-          const condition = screenerType === 'kd' ? 'KD指標低於20（超賣）' : '5日均線向上穿越20日均線（黃金交叉）';
-          const stockList = buildStockListText(screenedStocks, screenerType);
-          prompt = `我用技術指標篩選了台股標的，條件是「${condition}」，篩選結果共 ${screenedStocks.length} 檔：${stockList}。\n\n請對這些標的進行三方激辯分析，分別從基本面、技術面、風控角度分析，並給出投資建議。`;
-        }
-
-        const systemPrompt = getSystemPrompt(panelId);
-
-        const responseText = await callGemini(systemPrompt, prompt, apiKey);
-        removeLoading(panelId);
-        parseAndDisplayGeminiResponse(panelId, responseText);
-        setInputDisabled(panelId, false);
-      }
-
-    } catch (err) {
-      // ── SAFE ERROR HANDLING ──
-      try {
-        removeLoading(panelId || 'stock');
-        const errMsg = '⚠️ 發生錯誤：' + (err && err.message ? err.message : '未知錯誤') + '\n\n請檢查 API Key 是否正確，或稍後再試。若要使用模擬模式，請清除 API Key。';
-        addBubble(panelId || 'stock', 'system', errMsg);
-        setInputDisabled(panelId || 'stock', false);
-      } catch (e2) {
-        // Last resort
-        console.error('Display error failed:', e2);
-      }
-    }
-  };
-
-  // ── Init: Show API status hint ──
   document.addEventListener('DOMContentLoaded', function () {
     updateApiStatusDisplay();
-    if (!getApiKey()) {
-      setTimeout(() => {
-        addBubble('stock', 'system', '💡 提示：目前為智能模擬模式。前往設定（⚙️）輸入 Gemini API Key 可啟動真實 AI 分析。');
-      }, 500);
-    }
   });
-
 })();
 </script>
 </body>
